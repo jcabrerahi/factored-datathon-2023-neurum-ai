@@ -5,7 +5,7 @@ from typing import List, Union
 
 # Third-Party Libraries
 from pyspark.sql.dataframe import DataFrame
-from pyspark.sql.functions import to_date, from_unixtime
+from pyspark.sql.functions import col, to_date, from_unixtime, date_format
 from pyspark.sql.types import ArrayType, StructType
 
 
@@ -44,3 +44,25 @@ class DateTransformation:
         """
         dataframe = dataframe.withColumn(column_name + "_date", to_date(from_unixtime(column_name)))
         return dataframe
+
+
+    @staticmethod
+    def extract_year_month(dataframe: DataFrame, column_name: str) -> DataFrame:
+        """
+        Extracts the year and month from a date column in the DataFrame.
+
+        Parameters:
+            dataframe (DataFrame): The input DataFrame.
+            column_name (str): The name of the date column to extract year and month from.
+
+        Returns:
+            DataFrame: A new DataFrame with an additional column "year_month" containing
+            the year and month extracted from the specified date column.
+        """
+        if column_name not in dataframe.columns:
+            raise ValueError(f"Column '{column_name}' not found in DataFrame.")
+
+        new_column_name = f"{column_name}_year_month"
+        df_with_year_month = dataframe.withColumn(new_column_name, date_format(col(column_name), "yyyy-MM"))
+
+        return df_with_year_month
