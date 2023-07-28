@@ -61,9 +61,11 @@ spark.conf.set(f"fs.azure.sas.fixed.token.{storage_account_name}.dfs.core.window
 # COMMAND ----------
 
 @setup_logging("logs_batch_amz_review")
-def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str], path_folder: str, storage_account_name: str):
+def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str], path_folder: str, storage_account_name: str) -> None:
     """
-     Loads data from a list of routes into a cumulative Spark DataFrame.
+     Loads data from a list of routes into a cumulative Spark DataFrame and save to delta table every 200 partitions.
+     In addition, transformations are performed on the extracted data, such as changing the date format, format column
+     names, etc.
 
      Parameters:
      - container_name (str): Name of the container in which the data is located.
@@ -72,13 +74,7 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
      - storage_account_name (str): Name of the Azure storage account where the data is located.
 
      Returns:
-     - df_all_partitions (DataFrame): Spark DataFrame containing all data loaded from the provided paths.
-
-     The function iterates through the list of routes, loading the data for each route into a Spark DataFrame.
-     The data for all routes is accumulated in a single DataFrame. Every 5 partitions is saved
-     the DataFrame in delta format in the path indicated in 'path_bronce_amz_reviews'.
-     In addition, transformations are performed on the extracted data, such as changing the date format.
-
+     - None
     """
     start_time_total = time.time()
     try:
@@ -117,7 +113,7 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
                 df_all_partitions = df_all_partitions.union(df_reviews)
             
             # # Load
-            # == SAVE - Append to delta table every 250 partitions
+            # == SAVE - Append to delta table every 200 partitions
             if counter % 200 == 0:
                 print("="*5,f"Saving chunk into delta {counter_total}/2500 {round((counter_total/2500)*100)}%| Elapsed time: {elapsed_time_total} mins.")
                 logging.info(f"Saving chunk into delta {counter_total}/2500 {round((counter_total/2500)*100)}%| Elapsed time: {elapsed_time_total} mins.")
