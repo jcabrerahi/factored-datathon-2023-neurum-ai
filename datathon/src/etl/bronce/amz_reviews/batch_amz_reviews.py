@@ -80,59 +80,72 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
      In addition, transformations are performed on the extracted data, such as changing the date format.
 
     """
+    start_time_total = time.time()
+    try:
+        df_all_partitions = None
+        counter = 0
+        counter_total = 0
 
-    df_all_partitions = None
-    counter = 0
+        logging.info("Iniciando proceso de carga de datos")
 
-    logging.info("Iniciando proceso de carga de datos")
+        # Recorrer los paths_partitions y cargar los datos en el DataFrame acumulativo
+        for path_info in paths_partitions:
+            path = f"{path_folder}/{path_info.name}"
+            counter += 1
+            counter_total += 1
 
-    # Recorrer los paths_partitions y cargar los datos en el DataFrame acumulativo
-    for path_info in paths_partitions:
-        path = f"{path_folder}/{path_info.name}"
-        counter += 1
-        print(path, counter)
+            end_time_total = time.time()
+            elapsed_time_total = round((end_time_total - start_time_total)/60, 2)
 
-        # Extract
-        df_partition = spark.read.format("json").load(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path}")
+            if counter % 50 == 0:
+                print(path, counter, counter_total, "Total time:", elapsed_time_total)
 
-        # Transform
-        df_reviews = EnrichingTransformation.get_formatted_column_names(df_partition)
-        df_reviews = DateTransformation.unix_to_date(df_reviews, "unix_review_time")
-        df_reviews = EnrichingTransformation.add_file_source_column(df_reviews)
-        df_reviews = (DateTransformation.extract_year_month(df_reviews, "unix_review_time_date")
-                      .withColumnRenamed("unix_review_time_date_year_month", "year_month")
-                      )
+            # Extract
+            df_partition = spark.read.format("json").load(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path}")
 
-        if df_all_partitions is None:
-            df_all_partitions = df_reviews
-        else:
-            df_all_partitions = df_all_partitions.union(df_reviews)
-        
-        # # Load
-        # == Append to delta table every 100 partitions
-        if counter % 500 == 0:
-            print("="*10,"Saving chunk into delta")
-            logging.info(f"Saving chunk into delta")
-            counter = 0
+            # Transform
+            df_reviews = EnrichingTransformation.get_formatted_column_names(df_partition)
+            df_reviews = DateTransformation.unix_to_date(df_reviews, "unix_review_time")
+            df_reviews = EnrichingTransformation.add_file_source_column(df_reviews)
+            df_reviews = (DateTransformation.extract_year_month(df_reviews, "unix_review_time_date")
+                        .withColumnRenamed("unix_review_time_date_year_month", "year_month")
+                        )
 
-            start_time = time.time()
-
-            (df_all_partitions.coalesce(1)
-                .write.format("delta")
-                .partitionBy('year_month')
-                .option("overwriteSchema", "true")
-                .mode("append")
-                .save(path_bronce_amz_reviews)
-            )
-
-            df_all_partitions = None
-
-            end_time = time.time()
-            elapsed_time = end_time - start_time
-
-            logging.info(f"Saved chunk into delta | Last_partition_processed: {path} | Elapsed time: {elapsed_time} seconds")
+            if df_all_partitions is None:
+                df_all_partitions = df_reviews
+            else:
+                df_all_partitions = df_all_partitions.union(df_reviews)
             
-    return df_all_partitions
+            # # Load
+            # == SAVE - Append to delta table every 250 partitions
+            if counter % 200 == 0:
+                print("="*5,f"Saving chunk into delta {counter_total}/2500 {round((counter_total/2500)*100)}%| Elapsed time: {elapsed_time_total} mins.")
+                logging.info(f"Saving chunk into delta {counter_total}/2500 {round((counter_total/2500)*100)}%| Elapsed time: {elapsed_time_total} mins.")
+                counter = 0
+
+                start_time = time.time()
+
+                (df_all_partitions.coalesce(1)
+                    .write.format("delta")
+                    .partitionBy('year_month')
+                    .option("overwriteSchema", "true")
+                    .mode("append")
+                    .save(path_bronce_amz_reviews)
+                )
+
+                df_all_partitions = None
+
+                end_time = time.time()
+                elapsed_time = round((end_time - start_time)/60)
+
+                logging.info(f"Saved chunk into delta | Last_partition_processed: {path} | Saving time: {elapsed_time} seconds | Elapsed time: {elapsed_time_total} mins.")
+
+        return df_all_partitions
+
+    except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
+        raise e  # opcional: este comando re-lanza la excepción después de registrarla
+        
 
 # COMMAND ----------
 
