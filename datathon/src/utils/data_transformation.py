@@ -32,7 +32,7 @@ class EnrichingTransformation:
     
     
     @staticmethod
-    def add_file_source_column(df, column_name="file_source"):
+    def add_file_source_column(dataframe: DataFrame, column_name: str = "file_source"):
         """
         Add a column to the DataFrame with the name of the input file using input_file_name .
 
@@ -44,7 +44,7 @@ class EnrichingTransformation:
         Return:
             pyspark.sql.DataFrame: The DataFrame with the "file_source" column added.
         """
-        return df.withColumn(column_name, input_file_name())
+        return dataframe.withColumn(column_name, input_file_name())
 
 
 class DateTransformation:
