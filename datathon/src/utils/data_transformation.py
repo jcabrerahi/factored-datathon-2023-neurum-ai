@@ -16,7 +16,8 @@ class EnrichingTransformation:
     @staticmethod
     def get_formatted_column_names(dataframe: DataFrame) -> DataFrame:
         """
-        get_formatted_column_names get a dataframe and return it with the columns names formatted
+        get_formatted_column_names get a dataframe and return it with the columns names formatted.
+        
         Args:
             dataframe: DataFrame
         Returns:
@@ -56,7 +57,8 @@ class DateTransformation:
         """
         unix_to_date get a dataframe and return it with the column name + '_date' in unix
         format converted to date
-        Args:
+        
+        Parameters:
             dataframe: DataFrame
             column_name: str
         Returns:
@@ -64,6 +66,22 @@ class DateTransformation:
         """
         dataframe = dataframe.withColumn(column_name + "_date", to_date(from_unixtime(column_name)))
         return dataframe
+    
+    
+    @staticmethod
+    def extract_date_from_string(df: DataFrame, date_column: str, date_format_string: str):
+        """
+        Extracts the date from the specified date_column using the provided date_format_string.
+
+        Parameters:
+            df (DataFrame): Input DataFrame containing the date_column.
+            date_column (str): The name of the column containing the date as a string.
+            date_format_string (str): The format of the date in the date_column.
+
+        Returns:
+            DataFrame: A new DataFrame with an additional column "parsed_date" containing the parsed date.
+        """
+        return df.withColumn("parsed_date", to_date(date_column, date_format_string))
 
 
     @staticmethod
