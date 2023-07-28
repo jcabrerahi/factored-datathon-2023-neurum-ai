@@ -5,11 +5,11 @@ from typing import List, Union
 
 # Third-Party Libraries
 from pyspark.sql.dataframe import DataFrame
-from pyspark.sql.functions import col, to_date, from_unixtime, date_format
+from pyspark.sql.functions import col, to_date, from_unixtime, date_format, input_file_name
 from pyspark.sql.types import ArrayType, StructType
 
 
-class DateTransformation:
+class EnrichingTransformation:
     """
     DateTransformation class contains methods to transform dates
     """
@@ -31,6 +31,26 @@ class DateTransformation:
         return dataframe 
     
     
+    @staticmethod
+    def add_file_source_column(df, column_name="file_source"):
+        """
+        Add a column to the DataFrame with the name of the input file using input_file_name .
+
+        Parameters:
+            - df (pyspark.sql.DataFrame): The DataFrame to which the "file_source" column will be added.
+            - column_name (str, optional): The desired name for the column that will contain the name of the file.
+            By default, "file_source" is used.
+
+        Return:
+            pyspark.sql.DataFrame: The DataFrame with the "file_source" column added.
+        """
+        return df.withColumn(column_name, input_file_name())
+
+
+class DateTransformation:
+    """
+    DateTransformation class contains methods to transform dates
+    """  
     @staticmethod
     def unix_to_date(dataframe: DataFrame, column_name: str) -> DataFrame:
         """
