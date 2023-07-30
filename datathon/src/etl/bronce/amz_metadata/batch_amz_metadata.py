@@ -13,7 +13,8 @@ from datathon.src.utils.data_transformation import EnrichingTransformation
 from datathon.config.logging import setup_logging
 from datathon.config.integration_config import AWSConfig
 
-from pyspark.sql.functions import col
+from pyspark.sql.functions import col, date_format
+from pyspark.sql.types import StructType
 import logging
 import boto3
 import time
@@ -40,13 +41,43 @@ sc._jsc.hadoopConfiguration().set("fs.s3a.secret.key", aws_secret_key)
 
 # == S3 config
 path_bucket = "neurum-ai-factored-datathon"
-path_bronce_amz_reviews = f"s3a://{path_bucket}/bronce/amazon/reviews"
+path_bronce_amz_metadata = f"s3a://{path_bucket}/bronce/amazon/metadata"
 
 # COMMAND ----------
 
 spark.conf.set(f"fs.azure.account.auth.type.{storage_account_name}.dfs.core.windows.net", "SAS")
 spark.conf.set(f"fs.azure.sas.token.provider.type.{storage_account_name}.dfs.core.windows.net", "org.apache.hadoop.fs.azurebfs.sas.FixedSASTokenProvider")
 spark.conf.set(f"fs.azure.sas.fixed.token.{storage_account_name}.dfs.core.windows.net", sas_token)
+spark.conf.set("spark.sql.legacy.timeParserPolicy", "LEGACY") # Restore the pre-Spark 3.0 date parsing behavior. This should allow the date parsing to work as expected
+
+# COMMAND ----------
+
+spark.conf.set("spark.sql.files.maxRecordsPerFile", 1000000)
+spark.conf.get("spark.sql.files.maxRecordsPerFile")
+
+# COMMAND ----------
+
+json_schema_metadata = {
+    "fields":[{"metadata":{},"name":"also_buy","nullable":True,"type":{"containsNull":True,"elementType":"string","type":"array"}},
+              {"metadata":{},"name":"also_view","nullable":True,"type":{"containsNull":True,"elementType":"string","type":"array"}},
+              {"metadata":{},"name":"asin","nullable":True,"type":"string"},
+              {"metadata":{},"name":"brand","nullable":True,"type":"string"},
+              {"metadata":{},"name":"category","nullable":True,"type":{"containsNull":True,"elementType":"string","type":"array"}},
+              {"metadata":{},"name":"date","nullable":True,"type":"string"},
+              {"metadata":{},"name":"description","nullable":True,"type":{"containsNull":True,"elementType":"string","type":"array"}},
+              {"metadata":{},"name":"details","nullable":True,"type":"string"},
+              {"metadata":{},"name":"feature","nullable":True,"type":{"containsNull":True,"elementType":"string","type":"array"}},
+              {"metadata":{},"name":"fit","nullable":True,"type":"string"},
+              {"metadata":{},"name":"image","nullable":True,"type":{"containsNull":True,"elementType":"string","type":"array"}},
+              {"metadata":{},"name":"main_cat","nullable":True,"type":"string"},
+              {"metadata":{},"name":"price","nullable":True,"type":"string"},
+              {"metadata":{},"name":"rank","nullable":True,"type":"string"},
+              {"metadata":{},"name":"similar_item","nullable":True,"type":"string"},
+              {"metadata":{},"name":"tech1","nullable":True,"type":"string"},
+              {"metadata":{},"name":"tech2","nullable":True,"type":"string"},
+              {"metadata":{},"name":"title","nullable":True,"type":"string"}],
+    "type":"struct"
+}
 
 # COMMAND ----------
 
@@ -60,7 +91,7 @@ spark.conf.set(f"fs.azure.sas.fixed.token.{storage_account_name}.dfs.core.window
 
 # COMMAND ----------
 
-@setup_logging("logs_batch_amz_review")
+@setup_logging("logs_batch_amz_metadata")
 def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str], path_folder: str, storage_account_name: str) -> None:
     """
      Loads data from a list of routes into a cumulative Spark DataFrame and save to delta table every 200 partitions.
@@ -77,6 +108,9 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
      - None
     """
     start_time_total = time.time()
+    lenght = len(paths_partitions)
+    schema = StructType.fromJson(json_schema_metadata)
+
     try:
         df_all_partitions = None
         counter = 0
@@ -85,7 +119,7 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
         logging.info("Iniciando proceso de carga de datos")
 
         # Recorrer los paths_partitions y cargar los datos en el DataFrame acumulativo
-        for path_info in paths_partitions:
+        for path_info in paths_partitions[:]:
             path = f"{path_folder}/{path_info.name}"
             counter += 1
             counter_total += 1
@@ -93,40 +127,41 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
             end_time_total = time.time()
             elapsed_time_total = round((end_time_total - start_time_total)/60, 2)
 
-            if counter % 50 == 0:
+            if counter % 100 == 0:
                 print(path, counter, counter_total, "Total time:", elapsed_time_total)
 
             # Extract
-            df_partition = spark.read.format("json").load(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path}")
+            df_partition = spark.read.format("json").schema(schema).load(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path}")
 
             # Transform
-            df_reviews = EnrichingTransformation.get_formatted_column_names(df_partition)
-            df_reviews = DateTransformation.unix_to_date(df_reviews, "unix_review_time")
-            df_reviews = EnrichingTransformation.add_file_source_column(df_reviews)
-            df_reviews = (DateTransformation.extract_year_month(df_reviews, "unix_review_time_date")
-                        .withColumnRenamed("unix_review_time_date_year_month", "year_month")
-                        )
+            df_process = EnrichingTransformation.get_formatted_column_names(df_partition)
+            df_process = DateTransformation.extract_date_from_string(df_process, "date", "MMMM dd, yyyy")
+            df_process = EnrichingTransformation.add_file_source_column(df_process)
+            df_process = (
+                df_process.withColumn("year", date_format(col("parsed_date"), "yyyy"))
+                # .withColumnRenamed("parsed_date_year_month", "year_month")
+            )
 
             if df_all_partitions is None:
-                df_all_partitions = df_reviews
+                df_all_partitions = df_process
             else:
-                df_all_partitions = df_all_partitions.union(df_reviews)
+                df_all_partitions = df_all_partitions.union(df_process)
             
             # # Load
-            # == SAVE - Append to delta table every 200 partitions
-            if counter % 200 == 0:
-                print("="*5,f"Saving chunk into delta {counter_total}/2500 {round((counter_total/2500)*100)}%| Elapsed time: {elapsed_time_total} mins.")
-                logging.info(f"Saving chunk into delta {counter_total}/2500 {round((counter_total/2500)*100)}%| Elapsed time: {elapsed_time_total} mins.")
+            # == SAVE - Append to delta table every 100 partitions
+            if counter % 100 == 0 or counter_total % 1503 == 0:
+                print("="*5,f"Saving chunk into delta {counter_total}/{lenght} {round((counter_total/lenght)*100)}%| Elapsed time: {elapsed_time_total} mins.")
+                logging.info(f"Saving chunk into delta {counter_total}/{lenght} {round((counter_total/lenght)*100)}%| Elapsed time: {elapsed_time_total} mins.")
                 counter = 0
 
                 start_time = time.time()
 
-                (df_all_partitions.coalesce(1)
+                (df_all_partitions
                     .write.format("delta")
-                    .partitionBy('year_month')
+                    .partitionBy('year')
                     .option("overwriteSchema", "true")
                     .mode("append")
-                    .save(path_bronce_amz_reviews)
+                    .save(path_bronce_amz_metadata)
                 )
 
                 df_all_partitions = None
@@ -134,6 +169,7 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
                 end_time = time.time()
                 elapsed_time = round((end_time - start_time)/60)
 
+                print("="*5,f"Saved chunk into delta | Last_partition_processed: {path} | Saving time: {elapsed_time} seconds | Elapsed time: {elapsed_time_total} mins.")
                 logging.info(f"Saved chunk into delta | Last_partition_processed: {path} | Saving time: {elapsed_time} seconds | Elapsed time: {elapsed_time_total} mins.")
 
         return df_all_partitions
@@ -149,9 +185,25 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
 aws_config = AWSConfig(access_key=aws_access_key, secret_key=aws_secret_key)
 aws_config.setup_aws_credentials()
 
-path_reviews = "amazon_reviews/"
-paths = dbutils.fs.ls(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path_reviews}")
-load_chunked_data_from_paths(container_name, paths, path_reviews[:-1], storage_account_name)
+path_metadata = "amazon_metadata/"
+paths = dbutils.fs.ls(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path_metadata}")
+paths.sort()
+load_chunked_data_from_paths(container_name, paths, path_metadata[:-1], storage_account_name)
+
+# COMMAND ----------
+
+# Configure AWS credentials to logging
+aws_config = AWSConfig(access_key=aws_access_key, secret_key=aws_secret_key)
+aws_config.setup_aws_credentials()
+
+path_metadata = "amazon_metadata/"
+paths = dbutils.fs.ls(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path_metadata}")
+paths.sort()
+load_chunked_data_from_paths(container_name, paths, path_metadata[:-1], storage_account_name)
+
+# COMMAND ----------
+
+display(df_partition.groupBy("asin").count().orderBy(col("count").desc()))
 
 # COMMAND ----------
 
@@ -168,15 +220,63 @@ dbutils.notebook.exit("Done")
 
 # COMMAND ----------
 
-# 55933 per partition
-df_test = spark.read.format("delta").load(path_bronce_amz_reviews)
-# print(df_test.count())
-display(df_test.groupBy("file_source").count())
+path_metadata = "amazon_metadata/partition_2"
+schema = StructType.fromJson(json_schema_metadata)
+df_partition = spark.read.format("json").schema(schema).load(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path_metadata}")
+display(df_partition)
 
 # COMMAND ----------
 
-print(df_test.count())
+
+
+# COMMAND ----------
+
+# 10000 per partition
+df_test = spark.read.format("delta").load(path_bronce_amz_metadata)
+# print(df_test.count())
+display(df_test)
+
+# COMMAND ----------
+
+display(df_test.count())
+
+# COMMAND ----------
+
+df_test.explain(mode='cost')
+
+# COMMAND ----------
+
+display(df_test.groupBy("asin").count())
+
+# COMMAND ----------
+
+display(df_test.filter(col("year_month").isNull()))
+
+# COMMAND ----------
+
+print(df_test.filter(col("year_month").isNull()).count())
 
 # COMMAND ----------
 
 display(df_test.filter(col("asin") == "1622234642"))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # Optimize
+
+# COMMAND ----------
+
+spark.sql(f"OPTIMIZE delta.`{path_bronce_amz_metadata}`")
+
+# COMMAND ----------
+
+spark.sql(f"OPTIMIZE delta.`{path_bronce_amz_metadata}` ZORDER BY asin")
+
+# COMMAND ----------
+
+spark.sql(f"VACUUM delta.`{path_bronce_amz_metadata}` RETAIN 168 HOURS")
+
+# COMMAND ----------
+
+
