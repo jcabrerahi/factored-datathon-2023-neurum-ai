@@ -57,11 +57,11 @@ repos:
         additional_dependencies:
           - flake8-docstrings
   - repo: https://github.com/pycqa/pylint
-    rev: v3.0.0a6
+    rev: v2.17.5
     hooks:
       - id: pylint
         name: python code
-        entry: pylint --ignore=.conf
+        # entry: pylint --ignore=.conf
         language: system
         types: [python]
         args: ["-rn", "-sn", "--rcfile=.conf/pylintrc", "-d duplicate-code"]
