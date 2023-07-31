@@ -30,38 +30,38 @@ repos:
       - id: requirements-txt-fixer
       - id: trailing-whitespace
   # - repo: https://github.com/pre-commit/mirrors-prettier
-  #   rev: v3.0.0
+  #   rev: v2.5.1
   #   hooks:
   #     - id: prettier
-  # - repo: https://github.com/detailyang/pre-commit-shell
-  #   rev: 1.0.5
-  #   hooks:
-  #     - id: shell-lint
+  - repo: https://github.com/detailyang/pre-commit-shell
+    rev: 1.0.5
+    hooks:
+      - id: shell-lint
   # - repo: https://github.com/PyCQA/isort
   #   rev: 5.10.1
   #   hooks:
   #     - id: isort
   #       name: python isort
-  # - repo: https://github.com/psf/black
-  #   rev: 23.7.0
-  #   hooks:
-  #     - id: black
-  #       name: python black
-  #       exclude: '(batch|stream)?(.*)\.py'
-  # - repo: https://github.com/PyCQA/flake8
-  #   rev: 6.1.0
-  #   hooks:
-  #     - id: flake8
-  #       name: python flake8
-  #       exclude: '(batch|stream)?(.*)\.py'
-  #       additional_dependencies:
-  #         - flake8-docstrings
-  # - repo: https://github.com/pycqa/pylint
-  #   rev: v2.17.5
-  #   hooks:
-  #     - id: pylint
-  #       name: python code
-  #       # entry: pylint --ignore=.conf
-  #       language: system
-  #       types: [python]
-  #       args: ["-rn", "-sn", "--rcfile=.conf/pylintrc", "-d duplicate-code"]
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        name: python black
+        exclude: '(batch|stream)?(.*)\.py'
+  - repo: https://github.com/PyCQA/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        name: python flake8
+        exclude: '(batch|stream)?(.*)\.py'
+        additional_dependencies:
+          - flake8-docstrings
+  - repo: https://github.com/pycqa/pylint
+    rev: v2.17.5
+    hooks:
+      - id: pylint
+        name: python code
+        # entry: pylint --ignore=.conf
+        language: system
+        types: [python]
+        args: ["-rn", "-sn", "--rcfile=.conf/pylintrc", "-d duplicate-code"]
