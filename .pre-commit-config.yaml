@@ -60,8 +60,8 @@ repos:
     rev: v3.0.0a6
     hooks:
       - id: pylint
-        name: python pylint
+        name: python code
         entry: pylint --ignore=.conf
         language: system
         types: [python]
-        args: ["-rn", "-sn", "--rcfile=./.conf/pylintrc", "-d duplicate-code"]
+        args: ["-rn", "-sn", "--rcfile=.conf/pylintrc", "-d duplicate-code"]
