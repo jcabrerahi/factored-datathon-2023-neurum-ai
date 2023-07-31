@@ -8,16 +8,17 @@
 
 # COMMAND ----------
 
-from datathon.src.utils.data_transformation import DateTransformation
-from datathon.src.utils.data_transformation import EnrichingTransformation
-from datathon.config.logging import setup_logging
-from datathon.config.integration_config import AWSConfig
-
-from pyspark.sql.functions import col
 import logging
-import boto3
 import time
 from typing import List
+
+import boto3
+from pyspark.sql.functions import col
+
+from config.integration_config import AWSConfig
+from config.custom_logging import setup_logging
+from src.utils.data_transformation import (DateTransformation,
+                                                    EnrichingTransformation)
 
 # COMMAND ----------
 
@@ -113,7 +114,7 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
                 df_all_partitions = df_reviews
             else:
                 df_all_partitions = df_all_partitions.union(df_reviews)
-            
+
             # # Load
             # == SAVE - Append to delta table every 200 partitions
             if counter % 100 == 0:
@@ -146,7 +147,7 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
     except Exception as e:
         logging.error(f"An error occurred: {str(e)}")
         raise e  # opcional: este comando re-lanza la excepción después de registrarla
-        
+
 
 # COMMAND ----------
 

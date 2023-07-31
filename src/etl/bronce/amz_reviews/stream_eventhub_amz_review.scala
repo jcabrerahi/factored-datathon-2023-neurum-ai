@@ -39,13 +39,13 @@ val lastOffset = retrieveOffset()  // función que recupera el último offset co
 
 val eventHubsConf = EventHubsConf(connectionString)
   .setStartingPosition(
-    if (startFromBeginning) 
-      EventPosition.fromStartOfStream 
-    else 
+    if (startFromBeginning)
+      EventPosition.fromStartOfStream
+    else
       EventPosition.fromSequenceNumber(lastOffset)
   )
   .setConsumerGroup("neurum_ai")
-  
+
 
 // COMMAND ----------
 
@@ -119,5 +119,3 @@ display(df_eventhubs_decoded)
 // MAGIC # Optimize
 
 // COMMAND ----------
-
-
