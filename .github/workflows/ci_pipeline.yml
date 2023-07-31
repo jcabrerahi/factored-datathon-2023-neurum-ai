@@ -31,7 +31,7 @@ jobs:
             ${{ runner.os }}-poetry-
 
       - name: Install dependencies with Poetry
-        run: poetry install --only dev
+        run: poetry install
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
 
       - name: Run pre-commit hooks
