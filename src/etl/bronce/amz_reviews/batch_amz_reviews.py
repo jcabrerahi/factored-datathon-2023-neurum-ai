@@ -8,16 +8,17 @@
 
 # COMMAND ----------
 
-from datathon.src.utils.data_transformation import DateTransformation
-from datathon.src.utils.data_transformation import EnrichingTransformation
-from datathon.config.logging import setup_logging
-from datathon.config.integration_config import AWSConfig
-
-from pyspark.sql.functions import col
 import logging
-import boto3
 import time
 from typing import List
+
+import boto3
+from pyspark.sql.functions import col
+
+from config.integration_config import AWSConfig
+from config.custom_logging import setup_logging
+from src.utils.data_transformation import (DateTransformation,
+                                                    EnrichingTransformation)
 
 # COMMAND ----------
 
@@ -47,6 +48,8 @@ path_bronce_amz_reviews = f"s3a://{path_bucket}/bronce/amazon/reviews"
 spark.conf.set(f"fs.azure.account.auth.type.{storage_account_name}.dfs.core.windows.net", "SAS")
 spark.conf.set(f"fs.azure.sas.token.provider.type.{storage_account_name}.dfs.core.windows.net", "org.apache.hadoop.fs.azurebfs.sas.FixedSASTokenProvider")
 spark.conf.set(f"fs.azure.sas.fixed.token.{storage_account_name}.dfs.core.windows.net", sas_token)
+spark.conf.set("spark.sql.files.maxRecordsPerFile", 500000)
+spark.conf.get("spark.sql.files.maxRecordsPerFile")
 
 # COMMAND ----------
 
@@ -111,23 +114,26 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
                 df_all_partitions = df_reviews
             else:
                 df_all_partitions = df_all_partitions.union(df_reviews)
-            
+
             # # Load
             # == SAVE - Append to delta table every 200 partitions
-            if counter % 200 == 0:
+            if counter % 100 == 0:
                 print("="*5,f"Saving chunk into delta {counter_total}/2500 {round((counter_total/2500)*100)}%| Elapsed time: {elapsed_time_total} mins.")
                 logging.info(f"Saving chunk into delta {counter_total}/2500 {round((counter_total/2500)*100)}%| Elapsed time: {elapsed_time_total} mins.")
                 counter = 0
 
                 start_time = time.time()
 
-                (df_all_partitions.coalesce(1)
+                (df_all_partitions
                     .write.format("delta")
                     .partitionBy('year_month')
                     .option("overwriteSchema", "true")
                     .mode("append")
                     .save(path_bronce_amz_reviews)
                 )
+
+                # Optimize Delta Lake table
+                # spark.sql(f"OPTIMIZE delta.`{path_bronce_amz_reviews}`")
 
                 df_all_partitions = None
 
@@ -141,7 +147,7 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
     except Exception as e:
         logging.error(f"An error occurred: {str(e)}")
         raise e  # opcional: este comando re-lanza la excepción después de registrarla
-        
+
 
 # COMMAND ----------
 
@@ -179,8 +185,23 @@ print(df_test.count())
 
 # COMMAND ----------
 
-display(df_test.filter(col("asin") == "1622234642"))
+# path_reviews = "amazon_reviews/partition_1322"
+# df_partition = spark.read.format("json").load(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path_reviews}")
+# print(df_partition.count())
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC # Optimize
 
+# COMMAND ----------
+
+spark.sql(f"OPTIMIZE delta.`{path_bronce_amz_reviews}`")
+
+# COMMAND ----------
+
+spark.sql(f"OPTIMIZE delta.`{path_bronce_amz_reviews}` ZORDER BY asin")
+
+# COMMAND ----------
+
+spark.sql(f"VACUUM delta.`{path_bronce_amz_reviews}` RETAIN 168 HOURS")

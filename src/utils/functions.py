@@ -1,9 +1,14 @@
+""" Module with pure python functions to feed pyspark transformations."""
+
 import re
+
 import unidecode
 
 
-class custom_functions:
-    
+class CustomFunctions:
+    """
+    A collection of custom utility functions.
+    """
     @staticmethod
     def to_snakecase(word: str) -> str:
         """to_snakecase convert any string to snakecase format
