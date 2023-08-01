@@ -16,15 +16,15 @@
 // MAGIC
 // MAGIC aws_access_key = dbutils.secrets.get(scope="aws_credentials", key="data_services.access_key")
 // MAGIC aws_secret_key = dbutils.secrets.get(scope="aws_credentials", key="data_services.secret_key")
-// MAGIC table_name = "azure_eventhub_offset"
+// MAGIC table_name = "stream_events_position"
 // MAGIC
 // MAGIC aws_config = AWSConfig(aws_access_key_id=aws_access_key, aws_secret_key=aws_secret_key)
 // MAGIC boto3_config = aws_config.create_boto3_session()
 // MAGIC
 // MAGIC def get_offset_value():
 // MAGIC     dynamo_instance = DynamoDBStore(boto3_config, table_name)
-// MAGIC     data_from_dynamodb = dynamo_instance.retrieve_item({"id": 0})
-// MAGIC     return int(data_from_dynamodb["offset"])
+// MAGIC     data_from_dynamodb = dynamo_instance.retrieve_item({"event_source": "factored_azure_eventhub"})
+// MAGIC     return data_from_dynamodb["enqueuedTime"]
 // MAGIC
 // MAGIC spark.udf.register("getOffsetValue", get_offset_value)
 
@@ -45,6 +45,12 @@ import org.apache.spark.sql.functions.{ explode, split }
 
 // COMMAND ----------
 
+import java.time.Instant
+val dateString = "2023-07-27T23:25:19.836000Z" 
+val instant = Instant.parse(dateString)
+
+// COMMAND ----------
+
 // AWS credentials
 val aws_access_key = dbutils.secrets.get(scope="aws_credentials", key="data_services.access_key")
 val aws_secret_key = dbutils.secrets.get(scope="aws_credentials", key="data_services.secret_key")
@@ -54,21 +60,17 @@ spark.sparkContext.hadoopConfiguration.set("fs.s3a.secret.key", aws_secret_key)
 
 // Azure EventHub
 val path_endpoint = dbutils.secrets.get(scope="azure_credentials", key="event_hub.endpoint")
-// val path_endpoint = "Endpoint=sb://factored-datathon.servicebus.windows.net/;SharedAccessKeyName=datathon_group_4;SharedAccessKey=zkZkK6UnK6PpFAOGbgcBfnHUZsXPZpuwW+AEhEH24uc=;EntityPath=factored_datathon_amazon_reviews_4"
 
-// == S3 config
+// S3 config
 val path_bucket = "neurum-ai-factored-datathon"
 val path_bronce_amz_stream_reviews = s"s3a://$path_bucket/bronce/amazon/stream_reviews"
 
+val startFromBeginning = false
+val offsetValue: String = spark.sql("SELECT getOffsetValue() as offsetValue").collect()(0).getAs[String]("offsetValue")
+
+// ========= CONFIG
 val connectionString = ConnectionStringBuilder(path_endpoint)
   .build
-
-// val eventHubsConf = EventHubsConf(connectionString)
-//   .setStartingPosition(EventPosition.fromStartOfStream)
-//   .setConsumerGroup("neurum_ai")
-
-val startFromBeginning = false // true si quieres empezar desde el principio, false si quieres empezar desde el último offset
-val offsetValue: String = spark.sql("SELECT getOffsetValue() as offsetValue").collect()(0).getAs[String]("offsetValue")
 
 val eventHubsConf = EventHubsConf(connectionString)
   .setStartingPosition(
@@ -80,12 +82,6 @@ val eventHubsConf = EventHubsConf(connectionString)
   )
   .setConsumerGroup("neurum_ai")
 
-
-// COMMAND ----------
-
-import java.time.Instant
-val dateString = "2023-07-27T23:25:19.836000Z" 
-val instant = Instant.parse(dateString)
 
 // COMMAND ----------
 
