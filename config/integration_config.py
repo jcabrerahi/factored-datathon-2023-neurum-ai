@@ -20,17 +20,17 @@ class AWSConfig:
         secret_key (str): The AWS secret access key.
     """
 
-    def __init__(self, aws_access_key_id, aws_secret_access_key, region_name):
+    def __init__(self, aws_access_key_id: str, aws_secret_key: str, region_name: str = "us-east-1"):
         """ Initialize AWSConfig with the provided credentials and region.
 
         Args:
             aws_access_key_id (str): AWS access key ID.
-            aws_secret_access_key (str): AWS secret access key.
+            aws_secret_key (str): AWS secret access key.
             region_name (str): AWS region name to be used for the session.
         """
-        self.aws_access_key_id = aws_access_key_id
-        self.aws_secret_access_key = aws_secret_access_key
-        self.region_name = region_name
+        self._aws_access_key_id = aws_access_key_id
+        self._aws_secret_key = aws_secret_key
+        self._region_name = region_name
 
     def create_boto3_session(self):
         """ Create and return a boto3 session using AWS credentials and region.
@@ -39,7 +39,7 @@ class AWSConfig:
             boto3.Session: A boto3 session object.
         """
         return boto3.Session(
-            aws_access_key_id=self.aws_access_key_id,
-            aws_secret_access_key=self.aws_secret_access_key,
-            region_name=self.region_name,
+            aws_access_key_id=self._aws_access_key_id,
+            aws_secret_access_key=self._aws_secret_key,
+            region_name=self._region_name,
         )

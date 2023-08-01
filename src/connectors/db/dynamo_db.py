@@ -1,17 +1,17 @@
 """ A module to interact with a AWS DynamoDB table CRUD."""
-import boto3
+from src.connectors.db.abstract_db import AbstractStore
 
 
-class DynamoDBStore:
+class DynamoDBStore(AbstractStore):
     """ A class to interact with a DynamoDB table CRUD."""
 
-    def __init__(self, table_name):
+    def __init__(self, boto3_session, table_name: str):
         """ Initializes the DynamoDBStore with the specified DynamoDB table.
 
         Args:
             table_name (str): The name of the DynamoDB table to interact with.
         """
-        self.dynamodb = boto3.resource("dynamodb")
+        self.dynamodb = boto3_session.resource("dynamodb")
         self.table = self.dynamodb.Table(table_name)
 
     def create_item(self, item):
