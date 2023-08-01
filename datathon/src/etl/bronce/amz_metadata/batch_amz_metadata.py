@@ -114,12 +114,12 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
     try:
         df_all_partitions = None
         counter = 0
-        counter_total = 0
+        counter_total = 1100
 
         logging.info("Iniciando proceso de carga de datos")
 
         # Recorrer los paths_partitions y cargar los datos en el DataFrame acumulativo
-        for path_info in paths_partitions[:]:
+        for path_info in paths_partitions[1100:]:
             path = f"{path_folder}/{path_info.name}"
             counter += 1
             counter_total += 1
@@ -220,17 +220,6 @@ dbutils.notebook.exit("Done")
 
 # COMMAND ----------
 
-path_metadata = "amazon_metadata/partition_2"
-schema = StructType.fromJson(json_schema_metadata)
-df_partition = spark.read.format("json").schema(schema).load(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path_metadata}")
-display(df_partition)
-
-# COMMAND ----------
-
-
-
-# COMMAND ----------
-
 # 10000 per partition
 df_test = spark.read.format("delta").load(path_bronce_amz_metadata)
 # print(df_test.count())
@@ -238,7 +227,14 @@ display(df_test)
 
 # COMMAND ----------
 
-display(df_test.count())
+display(df_test.count()) # 14993059
+
+# COMMAND ----------
+
+# path_metadata = "amazon_metadata/partition_2"
+# schema = StructType.fromJson(json_schema_metadata)
+# df_partition = spark.read.format("json").schema(schema).load(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path_metadata}")
+# display(df_partition)
 
 # COMMAND ----------
 
@@ -276,7 +272,3 @@ spark.sql(f"OPTIMIZE delta.`{path_bronce_amz_metadata}` ZORDER BY asin")
 # COMMAND ----------
 
 spark.sql(f"VACUUM delta.`{path_bronce_amz_metadata}` RETAIN 168 HOURS")
-
-# COMMAND ----------
-
-
