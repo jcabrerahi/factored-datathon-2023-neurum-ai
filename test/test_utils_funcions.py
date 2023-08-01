@@ -1,6 +1,8 @@
+""" Modulo to test pure python functions."""
 from src.utils.functions import CustomFunctions
 
 def test_to_snakecase():
+    """ test to_snakecase function."""
     # Test normal string
     input_str = "HelloWorld"
     expected_output = "hello_world"
