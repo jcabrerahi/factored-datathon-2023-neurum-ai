@@ -6,9 +6,7 @@ import unidecode
 
 
 class CustomFunctions:
-    """
-    A collection of custom utility functions.
-    """
+    """ A collection of custom utility functions."""
     @staticmethod
     def to_snakecase(word: str) -> str:
         """to_snakecase convert any string to snakecase format
@@ -17,15 +15,12 @@ class CustomFunctions:
         Returns:
             str in snakecase format
         """
-        word = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", word)
-        word = (
-            re.sub("([a-z0-9])([A-Z])", r"\1_\2", word)
-            .strip()
-            .lower()
-            .replace(" ", "_")
-            .replace("-", "_")
-            .replace("\r", "")
-            .replace("__", "_")
-        )
-        word = re.sub("([^a-zA-Z0-9áéíóúÁÉÍÓÚâêîôÂÊÎÔãõÃÕçÇ: ])", "_", word)
-        return unidecode.unidecode(word)
+        print(f"Original: '{word}'")
+        word = re.sub('([a-z0-9])([A-Z])', r'\1_\2', word)
+        word = word.lower()
+        word = re.sub(r"\s+", "_", word)  # Aquí cambiamos los espacios por guiones bajos.
+        word = re.sub(r"[^a-zA-Z0-9áéíóúÁÉÍÓÚâêîôÂÊÎÔãõÃÕçÇ_]+", "_", word)
+        word = word.replace("__", "_")
+        word = unidecode.unidecode(word).strip("_")
+        print(f"Result: '{word}'")
+        return word
