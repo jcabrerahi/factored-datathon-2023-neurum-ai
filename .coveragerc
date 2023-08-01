@@ -1,0 +1,23 @@
+[run]
+source = ['lib']
+branch = true
+omit = */services/handlers/*
+       */shared/*
+       */i_*.py
+       */__init__*.py
+       */containers.py
+       */*i18n.py
+       */actions.py
+       */*_test.py
+       *test_*
+       tests/*
+       commons/*
+       handlers/*
+       *exception.py
+       *decorators*
+       *constants*
+       *schemas*
+       *notebook*
+       src/analytics/sales/amazon/silver/*
+[report]
+fail_under = 95

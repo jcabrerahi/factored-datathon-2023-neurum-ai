@@ -56,12 +56,19 @@ repos:
         exclude: '(batch|stream)?(.*)\.py'
         additional_dependencies:
           - flake8-docstrings
-  # - repo: https://github.com/pycqa/pylint
-  #   rev: v2.17.5
-  #   hooks:
-  #     - id: pylint
-  #       name: python code
-  #       # entry: pylint --ignore=.conf
-  #       language: system
-  #       types: [python]
-  #       args: ["-rn", "-sn", "--rcfile=.conf/pylintrc"]
+  - repo: https://github.com/pycqa/pylint
+    rev: v2.17.5
+    hooks:
+      - id: pylint
+        name: pylint
+        entry: pylint
+        language: system
+        types: [python]
+        args: ["-rn", "-sn", "--rcfile=pylintrc", "--fail-on=I"]
+        # exclude: tests(/\w*)*/functional/|tests/input|tests(/\w*)*data/|doc/
+      # - id: pylint
+      #   name: python code
+      #   entry: pylint --ignore=.conf
+      #   language: system
+      #   types: [python]
+      #   args: ["-rn", "-sn", "--rcfile=.conf/pylintrc"]
