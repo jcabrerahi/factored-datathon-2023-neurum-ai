@@ -8,10 +8,10 @@
 
 # COMMAND ----------
 
-from datathon.src.utils.data_transformation import DateTransformation
-from datathon.src.utils.data_transformation import EnrichingTransformation
-from datathon.config.logging import setup_logging
-from datathon.config.integration_config import AWSConfig
+from src.utils.data_transformation import DateTransformation
+from src.utils.data_transformation import EnrichingTransformation
+from config.custom_logging import setup_logging
+from config.integration_config import AWSConfig
 
 from pyspark.sql.functions import col, date_format
 from pyspark.sql.types import StructType
@@ -114,12 +114,12 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
     try:
         df_all_partitions = None
         counter = 0
-        counter_total = 0
+        counter_total = 1100
 
         logging.info("Iniciando proceso de carga de datos")
 
         # Recorrer los paths_partitions y cargar los datos en el DataFrame acumulativo
-        for path_info in paths_partitions[:]:
+        for path_info in paths_partitions[1100:]:
             path = f"{path_folder}/{path_info.name}"
             counter += 1
             counter_total += 1
@@ -192,17 +192,6 @@ load_chunked_data_from_paths(container_name, paths, path_metadata[:-1], storage_
 
 # COMMAND ----------
 
-# Configure AWS credentials to logging
-aws_config = AWSConfig(access_key=aws_access_key, secret_key=aws_secret_key)
-aws_config.setup_aws_credentials()
-
-path_metadata = "amazon_metadata/"
-paths = dbutils.fs.ls(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path_metadata}")
-paths.sort()
-load_chunked_data_from_paths(container_name, paths, path_metadata[:-1], storage_account_name)
-
-# COMMAND ----------
-
 display(df_partition.groupBy("asin").count().orderBy(col("count").desc()))
 
 # COMMAND ----------
@@ -220,25 +209,26 @@ dbutils.notebook.exit("Done")
 
 # COMMAND ----------
 
-path_metadata = "amazon_metadata/partition_2"
-schema = StructType.fromJson(json_schema_metadata)
-df_partition = spark.read.format("json").schema(schema).load(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path_metadata}")
-display(df_partition)
-
-# COMMAND ----------
-
-
-
-# COMMAND ----------
-
 # 10000 per partition
-df_test = spark.read.format("delta").load(path_bronce_amz_metadata)
+df_test = spark.read.format("delta").load(path_bronce_amz_metadata).filter(col("year") >= 2017)
 # print(df_test.count())
-display(df_test)
+display(df_test.groupBy("year").count())
 
 # COMMAND ----------
 
-display(df_test.count())
+display(df_test.count()) # 14993059. 15023059
+
+# COMMAND ----------
+
+# df_test_sample.count()
+df_test.write.format("delta").saveAsTable("test_db.amazon.sample_metadata")
+
+# COMMAND ----------
+
+# path_metadata = "amazon_metadata/partition_2"
+# schema = StructType.fromJson(json_schema_metadata)
+# df_partition = spark.read.format("json").schema(schema).load(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path_metadata}")
+# display(df_partition)
 
 # COMMAND ----------
 
@@ -276,7 +266,3 @@ spark.sql(f"OPTIMIZE delta.`{path_bronce_amz_metadata}` ZORDER BY asin")
 # COMMAND ----------
 
 spark.sql(f"VACUUM delta.`{path_bronce_amz_metadata}` RETAIN 168 HOURS")
-
-# COMMAND ----------
-
-
