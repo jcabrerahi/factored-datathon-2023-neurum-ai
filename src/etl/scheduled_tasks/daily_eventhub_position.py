@@ -71,6 +71,7 @@ def get_max_values_from_delta_table(spark, table_path):
 # COMMAND ----------
 
 max_values = get_max_values_from_delta_table(spark, path_bronce_amz_stream_reviews)
+print(max_values)
 sequence_number = max_values["sequenceNumber"]
 offset = max_values["offset"]
 enqueued_time = max_values["enqueuedTime"]
@@ -94,3 +95,7 @@ update_expression = {
 
 # Update dynamoDB table with new values
 response = dynamo_instance.update_item(table_name, item_key, update_expression)
+
+# COMMAND ----------
+
+

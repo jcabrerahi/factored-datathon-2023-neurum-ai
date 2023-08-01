@@ -1,5 +1,15 @@
 // Databricks notebook source
 // MAGIC %md
+// MAGIC # Summary
+// MAGIC
+// MAGIC This notebook read the stream amazon reviews from Azure eventHub to process and save as a Bronce delta table in our pipeline
+// MAGIC
+// MAGIC __Details:__
+// MAGIC - We use Scala in this notebook to take advantage of library: "org.apache.spark.eventhubs".
+
+// COMMAND ----------
+
+// MAGIC %md
 // MAGIC # Python config
 // MAGIC
 // MAGIC Retrieve offset value from DynamoDB to ingest EventHub from "fromOffset" instead "StartOfStream"
@@ -21,12 +31,12 @@
 // MAGIC aws_config = AWSConfig(aws_access_key_id=aws_access_key, aws_secret_key=aws_secret_key)
 // MAGIC boto3_config = aws_config.create_boto3_session()
 // MAGIC
-// MAGIC def get_offset_value():
+// MAGIC def get_enqueued_time_value():
 // MAGIC     dynamo_instance = DynamoDBStore(boto3_config, table_name)
 // MAGIC     data_from_dynamodb = dynamo_instance.retrieve_item({"event_source": "factored_azure_eventhub"})
 // MAGIC     return data_from_dynamodb["enqueuedTime"]
 // MAGIC
-// MAGIC spark.udf.register("getOffsetValue", get_offset_value)
+// MAGIC spark.udf.register("get_enqueued_time_value", get_enqueued_time_value)
 
 // COMMAND ----------
 
@@ -36,7 +46,10 @@
 // COMMAND ----------
 
 import org.apache.spark.eventhubs.{ ConnectionStringBuilder, EventHubsConf, EventPosition }
-import org.apache.spark.sql.functions.{ explode, split }
+import org.apache.spark.sql.functions.{ explode, split, date_format, col }
+import org.apache.spark.sql.streaming.Trigger
+import java.time.{Instant, LocalDateTime, ZoneOffset, ZoneId}
+import java.time.format.DateTimeFormatter
 
 // COMMAND ----------
 
@@ -45,12 +58,34 @@ import org.apache.spark.sql.functions.{ explode, split }
 
 // COMMAND ----------
 
-import java.time.Instant
-val dateString = "2023-07-27T23:25:19.836000Z" 
-val instant = Instant.parse(dateString)
+// dbutils.widgets.removeAll()
 
 // COMMAND ----------
 
+def format_time(date_string: String): Instant = {
+  val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS")
+  val localDateTime = LocalDateTime.parse(date_string, formatter)
+  val zonedDateTime = localDateTime.atZone(ZoneId.of("UTC"))
+  zonedDateTime.toInstant
+}
+
+// COMMAND ----------
+
+// ======================== Widgets and init values
+dbutils.widgets.dropdown("start_from_beginnig", "true", Seq("true", "false"))
+dbutils.widgets.text("beginnig_time", "") // 2023-07-30 00:00:21.274000
+
+val startFromBeginning = dbutils.widgets.get("start_from_beginnig").toBoolean
+val beginnigTimeManual: String = dbutils.widgets.get("beginnig_time").trim()
+
+val beginnigTimeDynamo: String = spark.sql("SELECT get_enqueued_time_value() as positionValue").collect()(0).getAs[String]("positionValue")
+val parsedBegginingTimeManual: Instant = if (!beginnigTimeManual.isEmpty) format_time(beginnigTimeManual) else Instant.MIN
+val parsedBegginingTime = format_time(beginnigTimeDynamo)
+val beginingTime = if (beginnigTimeManual.isEmpty) parsedBegginingTime else parsedBegginingTimeManual
+
+// COMMAND ----------
+
+// ======================== Third parties credentials and configuration
 // AWS credentials
 val aws_access_key = dbutils.secrets.get(scope="aws_credentials", key="data_services.access_key")
 val aws_secret_key = dbutils.secrets.get(scope="aws_credentials", key="data_services.secret_key")
@@ -65,10 +100,7 @@ val path_endpoint = dbutils.secrets.get(scope="azure_credentials", key="event_hu
 val path_bucket = "neurum-ai-factored-datathon"
 val path_bronce_amz_stream_reviews = s"s3a://$path_bucket/bronce/amazon/stream_reviews"
 
-val startFromBeginning = false
-val offsetValue: String = spark.sql("SELECT getOffsetValue() as offsetValue").collect()(0).getAs[String]("offsetValue")
-
-// ========= CONFIG
+// ======================== Session configuration
 val connectionString = ConnectionStringBuilder(path_endpoint)
   .build
 
@@ -77,8 +109,7 @@ val eventHubsConf = EventHubsConf(connectionString)
     if (startFromBeginning)
       EventPosition.fromStartOfStream
     else
-      // EventPosition.fromOffset("90720")
-      EventPosition.fromEnqueuedTime(instant)
+      EventPosition.fromEnqueuedTime(beginingTime)
   )
   .setConsumerGroup("neurum_ai")
 
@@ -107,38 +138,10 @@ val df_eventhubs = spark.readStream
 
 // COMMAND ----------
 
-import org.apache.spark.sql.functions._
-
 val df_eventhubs_decoded = df_eventhubs
   .withColumn("body", col("body").cast("string"))
   .withColumn("offset", col("offset").cast("long"))
   .withColumn("date_utc", date_format(col("enqueuedTime"), "yyyy-MM-dd"))
-
-// COMMAND ----------
-
-import org.apache.spark.util.SizeEstimator
-val dfSize = SizeEstimator.estimate(df_eventhubs_decoded)
-println(s"Estimated size of the dataFrame weatherDF = ${dfSize/1000000} mb")
-
-// COMMAND ----------
-
-display(df_eventhubs_decoded)
-
-// COMMAND ----------
-
-print(df_eventhubs_decoded.count())
-
-// COMMAND ----------
-
-// MAGIC %python
-// MAGIC path_bucket = "neurum-ai-factored-datathon"
-// MAGIC path_bronce_amz_stream_reviews = f"s3a://{path_bucket}/bronce/amazon/stream_reviews"
-// MAGIC
-// MAGIC df_eventhubs_decoded = spark.read.format("delta").load(path_bronce_amz_stream_reviews)
-// MAGIC max_enqueued_time = df_eventhubs_decoded.agg(pymin("enqueuedTime")).collect()[0][0]
-// MAGIC print(max_enqueued_time)
-// MAGIC
-// MAGIC display(df_eventhubs_decoded.groupBy("enqueuedTime").count())
 
 // COMMAND ----------
 
@@ -147,13 +150,11 @@ print(df_eventhubs_decoded.count())
 
 // COMMAND ----------
 
-df_eventhubs_decoded.writeStream.format("delta").mode("overwrite").save(path_bronce_amz_stream_reviews)
-
-// COMMAND ----------
-
-df_eventhubs_decoded.writeStream.format("delta")
+df_eventhubs_decoded.writeStream
+  .format("delta")
+  .option("maxFilesPerTrigger", 10000)
   .outputMode("append")
-  // .trigger()
+  // .trigger(Trigger.AvailableNow())
   .partitionBy("date_utc")
   .option("checkpointLocation", s"$path_bronce_amz_stream_reviews/_checkpoints")
   .start(path_bronce_amz_stream_reviews)
@@ -174,3 +175,11 @@ df_eventhubs_decoded.writeStream.format("delta")
 
 // MAGIC %md
 // MAGIC # Optimize
+
+// COMMAND ----------
+
+spark.sql(s"OPTIMIZE delta.`$path_bronce_amz_stream_reviews`")
+
+// COMMAND ----------
+
+spark.sql(s"VACUUM delta.`$path_bronce_amz_stream_reviews` RETAIN 168 HOURS")
