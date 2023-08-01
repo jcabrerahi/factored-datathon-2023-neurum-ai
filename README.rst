@@ -10,11 +10,11 @@
 .. image:: https://img.shields.io/badge/linting-pylint-yellowgreen
     :target: https://github.com/pylint-dev/pylint
 
-.. image:: https://raw.githubusercontent.com/jcabrerahi/factored-datathon-2023-neurum-ai/develop/badges/tests.svg
+.. image:: badges/tests.svg
     :alt: Tests
     :target: https://github.com/jcabrerahi/factored-datathon-2023-neurum-ai
 
-.. image:: https://raw.githubusercontent.com/jcabrerahi/factored-datathon-2023-neurum-ai/develop/badges/coverage.svg
+.. image:: badges/coverage.svg
     :alt: Coverage
     :target: https://github.com/jcabrerahi/factored-datathon-2023-neurum-ai
 
