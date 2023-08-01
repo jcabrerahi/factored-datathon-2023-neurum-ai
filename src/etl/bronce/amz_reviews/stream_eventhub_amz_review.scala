@@ -1,5 +1,36 @@
 // Databricks notebook source
 // MAGIC %md
+// MAGIC # Python config
+// MAGIC
+// MAGIC Retrieve offset value from DynamoDB to ingest EventHub from "fromOffset" instead "StartOfStream"
+
+// COMMAND ----------
+
+// MAGIC %python
+// MAGIC
+// MAGIC from config.integration_config import AWSConfig
+// MAGIC from src.connectors.db.dynamo_db import DynamoDBStore
+// MAGIC
+// MAGIC from pyspark.sql.types import StructType, StructField, IntegerType, DecimalType
+// MAGIC from pyspark.sql.functions import max as pymax, min as pymin
+// MAGIC
+// MAGIC aws_access_key = dbutils.secrets.get(scope="aws_credentials", key="data_services.access_key")
+// MAGIC aws_secret_key = dbutils.secrets.get(scope="aws_credentials", key="data_services.secret_key")
+// MAGIC table_name = "azure_eventhub_offset"
+// MAGIC
+// MAGIC aws_config = AWSConfig(aws_access_key_id=aws_access_key, aws_secret_key=aws_secret_key)
+// MAGIC boto3_config = aws_config.create_boto3_session()
+// MAGIC
+// MAGIC def get_offset_value():
+// MAGIC     dynamo_instance = DynamoDBStore(boto3_config, table_name)
+// MAGIC     data_from_dynamodb = dynamo_instance.retrieve_item({"id": 0})
+// MAGIC     return int(data_from_dynamodb["offset"])
+// MAGIC
+// MAGIC spark.udf.register("getOffsetValue", get_offset_value)
+
+// COMMAND ----------
+
+// MAGIC %md
 // MAGIC # Import libraries
 
 // COMMAND ----------
@@ -18,14 +49,16 @@ import org.apache.spark.sql.functions.{ explode, split }
 val aws_access_key = dbutils.secrets.get(scope="aws_credentials", key="data_services.access_key")
 val aws_secret_key = dbutils.secrets.get(scope="aws_credentials", key="data_services.secret_key")
 
-sc._jsc.hadoopConfiguration().set("fs.s3a.access.key", aws_access_key)
-sc._jsc.hadoopConfiguration().set("fs.s3a.secret.key", aws_secret_key)
+spark.sparkContext.hadoopConfiguration.set("fs.s3a.access.key", aws_access_key)
+spark.sparkContext.hadoopConfiguration.set("fs.s3a.secret.key", aws_secret_key)
 
-val path_endpoint = "Endpoint=sb://factored-datathon.servicebus.windows.net/;SharedAccessKeyName=datathon_group_4;SharedAccessKey=zkZkK6UnK6PpFAOGbgcBfnHUZsXPZpuwW+AEhEH24uc=;EntityPath=factored_datathon_amazon_reviews_4"
+// Azure EventHub
+val path_endpoint = dbutils.secrets.get(scope="azure_credentials", key="event_hub.endpoint")
+// val path_endpoint = "Endpoint=sb://factored-datathon.servicebus.windows.net/;SharedAccessKeyName=datathon_group_4;SharedAccessKey=zkZkK6UnK6PpFAOGbgcBfnHUZsXPZpuwW+AEhEH24uc=;EntityPath=factored_datathon_amazon_reviews_4"
 
 // == S3 config
 val path_bucket = "neurum-ai-factored-datathon"
-val path_bronce_amz_metadata = s"s3a://$path_bucket/bronce/amazon/stream_reviews"
+val path_bronce_amz_stream_reviews = s"s3a://$path_bucket/bronce/amazon/stream_reviews"
 
 val connectionString = ConnectionStringBuilder(path_endpoint)
   .build
@@ -34,18 +67,25 @@ val connectionString = ConnectionStringBuilder(path_endpoint)
 //   .setStartingPosition(EventPosition.fromStartOfStream)
 //   .setConsumerGroup("neurum_ai")
 
-val startFromBeginning = true // true si quieres empezar desde el principio, false si quieres empezar desde el último offset
-val lastOffset = retrieveOffset()  // función que recupera el último offset consumido
+val startFromBeginning = false // true si quieres empezar desde el principio, false si quieres empezar desde el último offset
+val offsetValue: String = spark.sql("SELECT getOffsetValue() as offsetValue").collect()(0).getAs[String]("offsetValue")
 
 val eventHubsConf = EventHubsConf(connectionString)
   .setStartingPosition(
     if (startFromBeginning)
       EventPosition.fromStartOfStream
     else
-      EventPosition.fromSequenceNumber(lastOffset)
+      // EventPosition.fromOffset("90720")
+      EventPosition.fromEnqueuedTime(instant)
   )
   .setConsumerGroup("neurum_ai")
 
+
+// COMMAND ----------
+
+import java.time.Instant
+val dateString = "2023-07-27T23:25:19.836000Z" 
+val instant = Instant.parse(dateString)
 
 // COMMAND ----------
 
@@ -66,10 +106,6 @@ val df_eventhubs = spark.readStream
 
 // COMMAND ----------
 
-display(df_eventhubs)
-
-// COMMAND ----------
-
 // MAGIC %md
 // MAGIC ## Transform
 
@@ -79,11 +115,34 @@ import org.apache.spark.sql.functions._
 
 val df_eventhubs_decoded = df_eventhubs
   .withColumn("body", col("body").cast("string"))
-  .withColumn("year_month", date_format(col("enqueuedTime"), "yyyy-MM"))
+  .withColumn("offset", col("offset").cast("long"))
+  .withColumn("date_utc", date_format(col("enqueuedTime"), "yyyy-MM-dd"))
+
+// COMMAND ----------
+
+import org.apache.spark.util.SizeEstimator
+val dfSize = SizeEstimator.estimate(df_eventhubs_decoded)
+println(s"Estimated size of the dataFrame weatherDF = ${dfSize/1000000} mb")
 
 // COMMAND ----------
 
 display(df_eventhubs_decoded)
+
+// COMMAND ----------
+
+print(df_eventhubs_decoded.count())
+
+// COMMAND ----------
+
+// MAGIC %python
+// MAGIC path_bucket = "neurum-ai-factored-datathon"
+// MAGIC path_bronce_amz_stream_reviews = f"s3a://{path_bucket}/bronce/amazon/stream_reviews"
+// MAGIC
+// MAGIC df_eventhubs_decoded = spark.read.format("delta").load(path_bronce_amz_stream_reviews)
+// MAGIC max_enqueued_time = df_eventhubs_decoded.agg(pymin("enqueuedTime")).collect()[0][0]
+// MAGIC print(max_enqueued_time)
+// MAGIC
+// MAGIC display(df_eventhubs_decoded.groupBy("enqueuedTime").count())
 
 // COMMAND ----------
 
@@ -92,14 +151,16 @@ display(df_eventhubs_decoded)
 
 // COMMAND ----------
 
-(
-  df_eventhubs_decoded.writeStream.format("delta")
+df_eventhubs_decoded.writeStream.format("delta").mode("overwrite").save(path_bronce_amz_stream_reviews)
+
+// COMMAND ----------
+
+df_eventhubs_decoded.writeStream.format("delta")
   .outputMode("append")
-  .trigger(once=True)
-  .partitionBy("year_month")
-  .option("checkpointLocation", s"$path_bronce_amz_metadata/_checkpoints")
-  .start(path_bronce_amz_metadata)
-)
+  // .trigger()
+  .partitionBy("date_utc")
+  .option("checkpointLocation", s"$path_bronce_amz_stream_reviews/_checkpoints")
+  .start(path_bronce_amz_stream_reviews)
 
 // COMMAND ----------
 
@@ -117,5 +178,3 @@ display(df_eventhubs_decoded)
 
 // MAGIC %md
 // MAGIC # Optimize
-
-// COMMAND ----------
