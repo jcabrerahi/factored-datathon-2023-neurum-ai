@@ -1,4 +1,11 @@
 # Databricks notebook source
+dbutils.widgets.dropdown("is_reprocess", "false", ["true", "false"])
+is_reprocess = True if (dbutils.widgets.get("is_reprocess") == "true") else False
+if not is_reprocess: 
+    dbutils.notebook.exit("Done")
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC # Import libraries
 
