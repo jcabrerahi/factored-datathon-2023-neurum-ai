@@ -58,10 +58,6 @@ import java.time.format.DateTimeFormatter
 
 // COMMAND ----------
 
-// dbutils.widgets.removeAll()
-
-// COMMAND ----------
-
 def format_time(date_string: String): Instant = {
   val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS")
   val localDateTime = LocalDateTime.parse(date_string, formatter)
@@ -152,11 +148,11 @@ val df_eventhubs_decoded = df_eventhubs
 
 df_eventhubs_decoded.writeStream
   .format("delta")
-  .option("maxFilesPerTrigger", 10000)
   .outputMode("append")
-  // .trigger(Trigger.AvailableNow())
+  .trigger(Trigger.AvailableNow)
   .partitionBy("date_utc")
   .option("checkpointLocation", s"$path_bronce_amz_stream_reviews/_checkpoints")
+  .option("maxOffset", 120000) // Max time 5 minutes
   .start(path_bronce_amz_stream_reviews)
 
 // COMMAND ----------

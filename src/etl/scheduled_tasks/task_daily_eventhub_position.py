@@ -95,7 +95,3 @@ update_expression = {
 
 # Update dynamoDB table with new values
 response = dynamo_instance.update_item(table_name, item_key, update_expression)
-
-# COMMAND ----------
-
-
