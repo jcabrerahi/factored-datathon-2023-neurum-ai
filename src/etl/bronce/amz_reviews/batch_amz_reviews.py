@@ -11,7 +11,7 @@ if not is_reprocess:
 
 # COMMAND ----------
 
-!pip install unidecode boto3
+!pip install unidecode
 
 # COMMAND ----------
 
@@ -19,7 +19,6 @@ import logging
 import time
 from typing import List
 
-import boto3
 from pyspark.sql.functions import col
 
 from config.integration_config import AWSConfig
@@ -46,6 +45,9 @@ aws_secret_key = dbutils.secrets.get(scope="aws_credentials", key="data_services
 sc._jsc.hadoopConfiguration().set("fs.s3a.access.key", aws_access_key)
 sc._jsc.hadoopConfiguration().set("fs.s3a.secret.key", aws_secret_key)
 
+aws_config = AWSConfig(aws_access_key_id=aws_access_key, aws_secret_key=aws_secret_key)
+boto3_config = aws_config.create_boto3_session()
+
 # == S3 config
 path_bucket = "neurum-ai-factored-datathon"
 path_bronce_amz_reviews = f"s3a://{path_bucket}/bronce/amazon/reviews"
@@ -70,7 +72,7 @@ spark.conf.get("spark.sql.files.maxRecordsPerFile")
 
 # COMMAND ----------
 
-@setup_logging("logs_batch_amz_review")
+@setup_logging(boto3_config, "logs_batch_amz_review")
 def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str], path_folder: str, storage_account_name: str) -> None:
     """
      Loads data from a list of routes into a cumulative Spark DataFrame and save to delta table every 200 partitions.
@@ -159,8 +161,8 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
 # COMMAND ----------
 
 # Configure AWS credentials to logging
-aws_config = AWSConfig(access_key=aws_access_key, secret_key=aws_secret_key)
-aws_config.setup_aws_credentials()
+# aws_config = AWSConfig(access_key=aws_access_key, secret_key=aws_secret_key)
+# aws_config.setup_aws_credentials()
 
 path_reviews = "amazon_reviews/"
 paths = dbutils.fs.ls(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path_reviews}")

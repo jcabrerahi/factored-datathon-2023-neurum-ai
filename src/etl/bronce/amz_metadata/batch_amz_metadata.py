@@ -39,6 +39,9 @@ aws_secret_key = dbutils.secrets.get(scope="aws_credentials", key="data_services
 sc._jsc.hadoopConfiguration().set("fs.s3a.access.key", aws_access_key)
 sc._jsc.hadoopConfiguration().set("fs.s3a.secret.key", aws_secret_key)
 
+aws_config = AWSConfig(aws_access_key_id=aws_access_key, aws_secret_key=aws_secret_key)
+boto3_config = aws_config.create_boto3_session()
+
 # == S3 config
 path_bucket = "neurum-ai-factored-datathon"
 path_bronce_amz_metadata = f"s3a://{path_bucket}/bronce/amazon/metadata"
@@ -91,7 +94,7 @@ json_schema_metadata = {
 
 # COMMAND ----------
 
-@setup_logging("logs_batch_amz_metadata")
+@setup_logging(boto3_config, "logs_batch_amz_metadata")
 def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str], path_folder: str, storage_account_name: str) -> None:
     """
      Loads data from a list of routes into a cumulative Spark DataFrame and save to delta table every 200 partitions.
@@ -138,8 +141,8 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
             df_process = DateTransformation.extract_date_from_string(df_process, "date", "MMMM dd, yyyy")
             df_process = EnrichingTransformation.add_file_source_column(df_process)
             df_process = (
-                df_process.withColumn("year", date_format(col("parsed_date"), "yyyy"))
-                # .withColumnRenamed("parsed_date_year_month", "year_month")
+                DateTransformation.extract_year(df_process, "parsed_date")
+                .withColumnRenamed("parsed_date_year", "year")
             )
 
             if df_all_partitions is None:
@@ -182,8 +185,8 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
 # COMMAND ----------
 
 # Configure AWS credentials to logging
-aws_config = AWSConfig(access_key=aws_access_key, secret_key=aws_secret_key)
-aws_config.setup_aws_credentials()
+# aws_config = AWSConfig(access_key=aws_access_key, secret_key=aws_secret_key)
+# aws_config.setup_aws_credentials()
 
 path_metadata = "amazon_metadata/"
 paths = dbutils.fs.ls(f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{path_metadata}")
