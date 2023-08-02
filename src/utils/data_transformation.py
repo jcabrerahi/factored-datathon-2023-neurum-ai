@@ -105,3 +105,27 @@ class DateTransformation:
         )
 
         return df_with_year_month
+    
+    @staticmethod
+    def extract_year(dataframe: DataFrame, column_name: str) -> DataFrame:
+        """ Extracts the year from a date column in the DataFrame.
+
+        Parameters:
+            dataframe (DataFrame): The input DataFrame.
+            column_name (str): The name of the date column to extract year and
+            month from.
+
+        Returns:
+            DataFrame: A new DataFrame with an additional column "year"
+            containing
+            the year extracted from the specified date column.
+        """
+        if column_name not in dataframe.columns:
+            raise ValueError(f"Column '{column_name}' not found in DataFrame.")
+
+        new_column_name = f"{column_name}_year"
+        df_with_year = dataframe.withColumn(
+            new_column_name, date_format(col(column_name), "yyyy")
+        )
+
+        return df_with_year

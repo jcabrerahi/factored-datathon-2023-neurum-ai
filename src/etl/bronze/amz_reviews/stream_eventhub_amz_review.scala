@@ -2,7 +2,7 @@
 // MAGIC %md
 // MAGIC # Summary
 // MAGIC
-// MAGIC This notebook read the stream amazon reviews from Azure eventHub to process and save as a Bronce delta table in our pipeline
+// MAGIC This notebook read the stream amazon reviews from Azure eventHub to process and save as a Bronze delta table in our pipeline
 // MAGIC
 // MAGIC __Details:__
 // MAGIC - We use Scala in this notebook to take advantage of library: "org.apache.spark.eventhubs".
@@ -94,7 +94,7 @@ val path_endpoint = dbutils.secrets.get(scope="azure_credentials", key="event_hu
 
 // S3 config
 val path_bucket = "neurum-ai-factored-datathon"
-val path_bronce_amz_stream_reviews = s"s3a://$path_bucket/bronce/amazon/stream_reviews"
+val path_bronze_amz_stream_reviews = s"s3a://$path_bucket/bronze/amazon/stream_reviews"
 
 // ======================== Session configuration
 val connectionString = ConnectionStringBuilder(path_endpoint)
@@ -151,9 +151,9 @@ df_eventhubs_decoded.writeStream
   .outputMode("append")
   .trigger(Trigger.AvailableNow)
   .partitionBy("date_utc")
-  .option("checkpointLocation", s"$path_bronce_amz_stream_reviews/_checkpoints")
+  .option("checkpointLocation", s"$path_bronze_amz_stream_reviews/_checkpoints")
   .option("maxOffset", 120000) // Max time 5 minutes
-  .start(path_bronce_amz_stream_reviews)
+  .start(path_bronze_amz_stream_reviews)
 
 // COMMAND ----------
 
@@ -163,7 +163,7 @@ df_eventhubs_decoded.writeStream
 // COMMAND ----------
 
 // # 55933 per partition
-// df_test = spark.read.format("delta").load(path_bronce_amz_reviews)
+// df_test = spark.read.format("delta").load(path_bronze_amz_reviews)
 // # print(df_test.count())
 // display(df_test.groupBy("file_source").count())
 
@@ -174,8 +174,8 @@ df_eventhubs_decoded.writeStream
 
 // COMMAND ----------
 
-spark.sql(s"OPTIMIZE delta.`$path_bronce_amz_stream_reviews`")
+spark.sql(s"OPTIMIZE delta.`$path_bronze_amz_stream_reviews`")
 
 // COMMAND ----------
 
-spark.sql(s"VACUUM delta.`$path_bronce_amz_stream_reviews` RETAIN 168 HOURS")
+spark.sql(s"VACUUM delta.`$path_bronze_amz_stream_reviews` RETAIN 168 HOURS")
