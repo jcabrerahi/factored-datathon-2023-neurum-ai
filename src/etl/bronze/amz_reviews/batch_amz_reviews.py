@@ -50,7 +50,7 @@ boto3_config = aws_config.create_boto3_session()
 
 # == S3 config
 path_bucket = "neurum-ai-factored-datathon"
-path_bronce_amz_reviews = f"s3a://{path_bucket}/bronce/amazon/reviews"
+path_bronze_amz_reviews = f"s3a://{path_bucket}/bronze/amazon/reviews"
 
 # COMMAND ----------
 
@@ -138,11 +138,11 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
                     .partitionBy('year_month')
                     .option("overwriteSchema", "true")
                     .mode("append")
-                    .save(path_bronce_amz_reviews)
+                    .save(path_bronze_amz_reviews)
                 )
 
                 # Optimize Delta Lake table
-                # spark.sql(f"OPTIMIZE delta.`{path_bronce_amz_reviews}`")
+                # spark.sql(f"OPTIMIZE delta.`{path_bronze_amz_reviews}`")
 
                 df_all_partitions = None
 
@@ -184,7 +184,7 @@ dbutils.notebook.exit("Done")
 # COMMAND ----------
 
 # 55933 per partition
-df_test = spark.read.format("delta").load(path_bronce_amz_reviews)
+df_test = spark.read.format("delta").load(path_bronze_amz_reviews)
 # print(df_test.count())
 display(df_test.groupBy("file_source").count())
 
@@ -205,12 +205,12 @@ print(df_test.count())
 
 # COMMAND ----------
 
-spark.sql(f"OPTIMIZE delta.`{path_bronce_amz_reviews}`")
+spark.sql(f"OPTIMIZE delta.`{path_bronze_amz_reviews}`")
 
 # COMMAND ----------
 
-spark.sql(f"OPTIMIZE delta.`{path_bronce_amz_reviews}` ZORDER BY asin")
+spark.sql(f"OPTIMIZE delta.`{path_bronze_amz_reviews}` ZORDER BY asin")
 
 # COMMAND ----------
 
-spark.sql(f"VACUUM delta.`{path_bronce_amz_reviews}` RETAIN 168 HOURS")
+spark.sql(f"VACUUM delta.`{path_bronze_amz_reviews}` RETAIN 168 HOURS")

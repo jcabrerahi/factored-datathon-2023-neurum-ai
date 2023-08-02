@@ -44,7 +44,7 @@ boto3_config = aws_config.create_boto3_session()
 
 # == S3 config
 path_bucket = "neurum-ai-factored-datathon"
-path_bronce_amz_metadata = f"s3a://{path_bucket}/bronce/amazon/metadata"
+path_bronze_amz_metadata = f"s3a://{path_bucket}/bronze/amazon/metadata"
 
 # COMMAND ----------
 
@@ -164,7 +164,7 @@ def load_chunked_data_from_paths(container_name: str, paths_partitions: List[str
                     .partitionBy('year')
                     .option("overwriteSchema", "true")
                     .mode("append")
-                    .save(path_bronce_amz_metadata)
+                    .save(path_bronze_amz_metadata)
                 )
 
                 df_all_partitions = None
@@ -213,7 +213,7 @@ dbutils.notebook.exit("Done")
 # COMMAND ----------
 
 # 10000 per partition
-df_test = spark.read.format("delta").load(path_bronce_amz_metadata).filter(col("year") >= 2017)
+df_test = spark.read.format("delta").load(path_bronze_amz_metadata).filter(col("year") >= 2017)
 # print(df_test.count())
 display(df_test.groupBy("year").count())
 
@@ -260,12 +260,12 @@ display(df_test.filter(col("asin") == "1622234642"))
 
 # COMMAND ----------
 
-spark.sql(f"OPTIMIZE delta.`{path_bronce_amz_metadata}`")
+spark.sql(f"OPTIMIZE delta.`{path_bronze_amz_metadata}`")
 
 # COMMAND ----------
 
-spark.sql(f"OPTIMIZE delta.`{path_bronce_amz_metadata}` ZORDER BY asin")
+spark.sql(f"OPTIMIZE delta.`{path_bronze_amz_metadata}` ZORDER BY asin")
 
 # COMMAND ----------
 
-spark.sql(f"VACUUM delta.`{path_bronce_amz_metadata}` RETAIN 168 HOURS")
+spark.sql(f"VACUUM delta.`{path_bronze_amz_metadata}` RETAIN 168 HOURS")
