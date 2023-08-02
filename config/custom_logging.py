@@ -2,13 +2,12 @@
 import logging
 from functools import wraps
 
-import boto3
 
-
-def setup_logging(log_file_name: str = "logs_batch_amz_review"):
+def setup_logging(boto3_session, log_file_name: str = "logs_batch_amz_review"):
     """ Decorator to set up logging for a function and upload logs to S3.
 
     Args:
+        boto3_session (boto3.Session): A boto3 session object.
         log_file_name (str, optional): The name of the log file (without the
         file extension).
             Defaults to "logs_batch_amz_review".
@@ -47,7 +46,7 @@ def setup_logging(log_file_name: str = "logs_batch_amz_review"):
                 s3_file_path = f"logs/{log_file_name}.log"
 
                 # Copy the local file to S3
-                s3_client = boto3.client("s3")
+                s3_client = boto3_session.resource("s3")
                 s3_client.upload_file(log_file_path, s3_bucket, s3_file_path)
 
                 return result
