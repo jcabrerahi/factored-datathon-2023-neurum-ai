@@ -46,3 +46,21 @@ def test_extract_year_month_no_col():
         DateTransformation.extract_year_month(dataframe, "Non-existing column")
 
     assert "Column 'Non-existing column' not found in DataFrame." in str(excinfo.value)
+    
+def test_extract_year():
+    """ Test extract_year funcitons."""
+    data = [("Alice", "2020-01-01"), ("Bob", "2020-02-01")]
+    dataframe = spark.createDataFrame(data, ["Name", "Registration Date"])
+    dataframe_transformed = DateTransformation.extract_year(dataframe, "Registration Date")
+
+    assert "Registration Date_year" in dataframe_transformed.columns, "Column 'Registration Date_year' should be added."
+
+def test_extract_year_no_col():
+    """ Test extract_year_no_column funcitons."""
+    data = [("Alice", "2020-01-01"), ("Bob", "2020-02-01")]
+    dataframe = spark.createDataFrame(data, ["Name", "Registration Date"])
+
+    with pytest.raises(ValueError) as excinfo:
+        DateTransformation.extract_year(dataframe, "Non-existing column")
+
+    assert "Column 'Non-existing column' not found in DataFrame." in str(excinfo.value)
