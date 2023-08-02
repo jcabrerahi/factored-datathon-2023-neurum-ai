@@ -35,7 +35,7 @@ sc._jsc.hadoopConfiguration().set("fs.s3a.secret.key", aws_secret_key)
 table_name = "stream_events_position"
 
 path_bucket = "neurum-ai-factored-datathon"
-path_bronze_amz_stream_reviews = f"s3a://{path_bucket}/bronze/amazon/stream_reviews"
+path_bronze_amz_stream_reviews = f"s3a://{path_bucket}/bronce/amazon/stream_reviews"
 
 # COMMAND ----------
 

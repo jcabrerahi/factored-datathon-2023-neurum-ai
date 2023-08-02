@@ -94,7 +94,7 @@ val path_endpoint = dbutils.secrets.get(scope="azure_credentials", key="event_hu
 
 // S3 config
 val path_bucket = "neurum-ai-factored-datathon"
-val path_bronze_amz_stream_reviews = s"s3a://$path_bucket/bronze/amazon/stream_reviews"
+val path_bronze_amz_stream_reviews = s"s3a://$path_bucket/bronce/amazon/stream_reviews"
 
 // ======================== Session configuration
 val connectionString = ConnectionStringBuilder(path_endpoint)

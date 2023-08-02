@@ -44,7 +44,7 @@ boto3_config = aws_config.create_boto3_session()
 
 # == S3 config
 path_bucket = "neurum-ai-factored-datathon"
-path_bronze_amz_metadata = f"s3a://{path_bucket}/bronze/amazon/metadata"
+path_bronze_amz_metadata = f"s3a://{path_bucket}/bronce/amazon/metadata"
 
 # COMMAND ----------
 
