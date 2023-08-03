@@ -168,7 +168,7 @@ while (isLoopActive) {
   val status = query.status
   println(System.currentTimeMillis())
   // Condition 1: If the query execution time exceeds 5 minutes and the trigger is inactive
-  if (status.isTriggerActive == false && 
+  if (status.isTriggerActive == false &&
       (System.currentTimeMillis() - init_time) > maxWaitTime) {
     println("5 minutes of stream passed.")
     isLoopActive = false
