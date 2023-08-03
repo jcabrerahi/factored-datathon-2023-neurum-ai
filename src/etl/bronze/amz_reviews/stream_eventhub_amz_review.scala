@@ -146,26 +146,45 @@ val df_eventhubs_decoded = df_eventhubs
 
 // COMMAND ----------
 
-df_eventhubs_decoded.writeStream
+val query = df_eventhubs_decoded.writeStream
   .format("delta")
   .outputMode("append")
-  .trigger(Trigger.AvailableNow)
   .partitionBy("date_utc")
   .option("checkpointLocation", s"$path_bronze_amz_stream_reviews/_checkpoints")
-  .option("maxOffset", 120000) // Max time 5 minutes
+  .trigger(Trigger.ProcessingTime("30 second"))
+  .option("maxFilesPerTrigger", 2500) // ensures each batch is written to the table atomically
   .start(path_bronze_amz_stream_reviews)
 
 // COMMAND ----------
 
-// MAGIC %md
-// MAGIC # Data quality
+Thread.sleep(30000) // Give 30 seconds to initialize the stream process
 
-// COMMAND ----------
+var isLoopActive = true
+val maxWaitTime = 5 * 60 * 1000 // wait 5 minutes
+val init_time = System.currentTimeMillis()
 
-// # 55933 per partition
-// df_test = spark.read.format("delta").load(path_bronze_amz_reviews)
-// # print(df_test.count())
-// display(df_test.groupBy("file_source").count())
+while (isLoopActive) {
+  // Get status of the query
+  val status = query.status
+  println(System.currentTimeMillis())
+  // Condition 1: If the query execution time exceeds 5 minutes and the trigger is inactive
+  if (status.isTriggerActive == false &&
+      (System.currentTimeMillis() - init_time) > maxWaitTime) {
+    println("5 minutes of stream passed.")
+    isLoopActive = false
+  } // Condition 2: If the status isDataAvailable and isTriggerActive are false
+  else if (status.isDataAvailable == false && status.isTriggerActive == false) {
+    println("Query has processed all available data.")
+    println(status)
+    isLoopActive = false
+  }
+  // Wait for a bit before checking status again
+  Thread.sleep(2000) // wait for 2 sec before next iteration
+}
+
+// Query execution complete
+println("Query execution complete.")
+query.stop()
 
 // COMMAND ----------
 
@@ -179,3 +198,45 @@ spark.sql(s"OPTIMIZE delta.`$path_bronze_amz_stream_reviews`")
 // COMMAND ----------
 
 spark.sql(s"VACUUM delta.`$path_bronze_amz_stream_reviews` RETAIN 168 HOURS")
+
+// COMMAND ----------
+
+dbutils.notebook.exit("Done")
+
+// COMMAND ----------
+
+// MAGIC %md
+// MAGIC # Data quality
+
+// COMMAND ----------
+
+// MAGIC %python
+// MAGIC from pyspark.sql.functions import col
+// MAGIC path_bucket = "neurum-ai-factored-datathon"
+// MAGIC path_bronze_amz_stream_reviews = f"s3a://{path_bucket}/bronce/amazon/stream_reviews"
+// MAGIC path_silver_amz_reviews = f"s3a://{path_bucket}/silver/amazon/reviews"
+// MAGIC
+// MAGIC df_test = spark.read.format("delta").load(path_bronze_amz_stream_reviews)
+// MAGIC # print(df_test.count())
+// MAGIC display(df_test.groupBy("enqueuedTime").count().orderBy(col("enqueuedTime").desc()))
+
+// COMMAND ----------
+
+// MAGIC %python
+// MAGIC from pyspark.sql.functions import col, to_date, to_timestamp, hour, minute
+// MAGIC
+// MAGIC # Cargar data
+// MAGIC df_test = spark.read.format("delta").load(path_bronze_amz_stream_reviews)
+// MAGIC
+// MAGIC # Extraer la fecha, la hora, minuto, hora-minuto de la columna enqueuedTime
+// MAGIC df_with_time = (df_test.withColumn("date", to_date(col("enqueuedTime")))
+// MAGIC                       .withColumn("hour", hour(to_timestamp(col("enqueuedTime"))))
+// MAGIC                       .withColumn("minute", minute(to_timestamp(col("enqueuedTime"))))
+// MAGIC                       )
+// MAGIC
+// MAGIC # Agrupar los datos por fecha y hora
+// MAGIC grouped_df = df_with_time.groupBy("date", "hour") \
+// MAGIC                          .agg({"*": "count"}) \
+// MAGIC                          .orderBy(col("date").asc(), col("hour").asc())
+// MAGIC
+// MAGIC display(grouped_df)
