@@ -152,20 +152,8 @@ df_eventhubs_decoded.writeStream
   .trigger(Trigger.AvailableNow)
   .partitionBy("date_utc")
   .option("checkpointLocation", s"$path_bronze_amz_stream_reviews/_checkpoints")
-  .option("maxOffset", 120000) // Max time 5 minutes
+  // .option("maxOffset", 120000) // Max time 5 minutes
   .start(path_bronze_amz_stream_reviews)
-
-// COMMAND ----------
-
-// MAGIC %md
-// MAGIC # Data quality
-
-// COMMAND ----------
-
-// # 55933 per partition
-// df_test = spark.read.format("delta").load(path_bronze_amz_reviews)
-// # print(df_test.count())
-// display(df_test.groupBy("file_source").count())
 
 // COMMAND ----------
 
@@ -179,3 +167,21 @@ spark.sql(s"OPTIMIZE delta.`$path_bronze_amz_stream_reviews`")
 // COMMAND ----------
 
 spark.sql(s"VACUUM delta.`$path_bronze_amz_stream_reviews` RETAIN 168 HOURS")
+
+// COMMAND ----------
+
+dbutils.notebook.exit("Done")
+
+// COMMAND ----------
+
+// MAGIC %md
+// MAGIC # Data quality
+
+// COMMAND ----------
+
+// MAGIC %python
+// MAGIC path_bucket = "neurum-ai-factored-datathon"
+// MAGIC path_bronze_amz_stream_reviews = f"s3a://{path_bucket}/bronce/amazon/stream_reviews"
+// MAGIC df_test = spark.read.format("delta").load(path_bronze_amz_stream_reviews)
+// MAGIC # print(df_test.count())
+// MAGIC display(df_test.groupBy("enqueuedTime").count())
