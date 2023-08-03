@@ -186,7 +186,8 @@ dbutils.notebook.exit("Done")
 # 55933 per partition
 df_test = spark.read.format("delta").load(path_bronze_amz_reviews)
 # print(df_test.count())
-display(df_test.groupBy("file_source").count())
+# display(df_test.groupBy("file_source").count())
+# display(df_test)
 
 # COMMAND ----------
 
