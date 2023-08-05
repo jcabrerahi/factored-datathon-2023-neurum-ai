@@ -100,14 +100,7 @@ reviews_stream_df = (reviews_stream_df
 
 # COMMAND ----------
 
-reviews_stream_df = (reviews_stream_df
-                .withColumn("possible_sentiment", 
-                            when(((col("overall").isin([4.0, 5.0])) & (col("keyword").isNotNull())), lit("positive")).otherwise(
-                            when(((col("overall").isin([0.0, 1.0, 2.0])) & (col("keyword").isNotNull())), lit("negative")).otherwise(lit(None)))))
-
-# COMMAND ----------
-
-display(reviews_stream_df)
+# display(reviews_stream_df)
 
 # COMMAND ----------
 
@@ -118,3 +111,7 @@ display(reviews_stream_df)
  .partitionBy("date_utc")
  .option("checkpointLocation", f"{path_silver_amz_reviews_stream}/_checkpoints")
  .start(path_silver_amz_reviews_stream))
+
+# COMMAND ----------
+
+

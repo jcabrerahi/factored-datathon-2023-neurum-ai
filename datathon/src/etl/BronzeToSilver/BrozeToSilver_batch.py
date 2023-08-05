@@ -3,6 +3,8 @@ from pyspark.sql.functions import *
 import pandas as pd
 import numpy as np
 import json
+from pyspark.sql.window import Window
+from pyspark.sql.functions import row_number
 
 # COMMAND ----------
 
@@ -162,7 +164,12 @@ metadata_df = (metadata_df
 
 # COMMAND ----------
 
-(metadata_df.write
+windowSpec = Window.partitionBy("asin").orderBy(col("date").desc())
+metadata_df = metadata_df.withColumn("row_number", row_number().over(windowSpec)).filter(col("row_number") == 1).drop("row_number")
+
+# COMMAND ----------
+
+(metadata_df.dropDuplicates().write
     .format("delta")
     .mode("overwrite") 
     .partitionBy("year")
@@ -227,21 +234,7 @@ reviews_batch_df = (reviews_batch_df
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC **sentiment:**
-# MAGIC * if keyword exists and overall is 4 or 5, then sentiment positive
-# MAGIC * if keyword exists and overall is 0, 1 or 2, then sentiment negative
-
-# COMMAND ----------
-
-reviews_batch_df = (reviews_batch_df
-                .withColumn("possible_sentiment", 
-                            when(((col("overall").isin([4.0, 5.0])) & (col("keyword").isNotNull())), lit("positive")).otherwise(
-                            when(((col("overall").isin([0.0, 1.0, 2.0])) & (col("keyword").isNotNull())), lit("negative")).otherwise(lit(None)))))
-
-# COMMAND ----------
-
-(reviews_batch_df.write
+(reviews_batch_df.dropDuplicates().write
     .format("delta")
     .mode("overwrite") 
     .partitionBy("year_month")
