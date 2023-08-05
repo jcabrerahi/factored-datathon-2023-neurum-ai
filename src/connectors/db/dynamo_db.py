@@ -38,11 +38,10 @@ class DynamoDBStore(AbstractStore):
         response = self.table.get_item(Key=key)
         return response.get("Item")
 
-    def update_item(self, table_name: str, key, update_expression):
+    def update_item(self, key, update_expression):
         """ Updates an item in the DynamoDB table.
 
         Args:
-            table_name (str): The name of the DynamoDB table.
             key (dict): The key of the item to update.
             update_expression (dict): A dictionary representation of the update to apply.
 
@@ -55,7 +54,7 @@ class DynamoDBStore(AbstractStore):
             expression_attribute_values[f":{attr}"] = value
 
         response = self.table.update_item(
-            TableName=table_name,
+            TableName=self.table,
             Key=key,
             UpdateExpression=update_expression_str,
             ExpressionAttributeValues=expression_attribute_values,
