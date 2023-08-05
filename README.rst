@@ -86,13 +86,9 @@ Install
 
 For command line use, pylint is installed with::
 
-.. code-block:: sh
-
     pip install poetry
 
 later init the project with poetry, install de dependencies and run the project with::
-
-.. code-block:: sh
 
     poetry install
 
@@ -104,13 +100,9 @@ How to test and pre-commit the code.
 
 To test the code, you can run the following command::
 
-.. code-block:: sh
-
     poetry run pytest --cov-report term-missing --cov=. --local-badge-output-dir badges/
 
 To pre-commit the code, you can run the following command::
-
-.. code-block:: sh
 
     poetry run pre-commit run --all-files
 
