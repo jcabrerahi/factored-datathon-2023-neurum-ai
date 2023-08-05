@@ -29,14 +29,38 @@ Reviews can make or break a business, big or small. And process a big amount of 
 
 We present two products. The first product includes two interactive dashboards that provide a comprehensive overview of your business's performance and customer feedback. The second product is a user-friendly web interface that allows you to effortlessly query the data table using natural language, eliminating the need to request reports from the data team, so you can get the data informations timely.
 
-Product features
-----------------
+Product Features
+================
 
-- **Sentiment Analysis**: By processing customer opinions and comments, our cutting-edge technology allows you to pinpoint the overall sentiment towards specific products or your brand as a whole. This powerful insight can guide you in identifying key areas for improvement, enhancing your brand's reputation and customer satisfaction. **[Sales Manager and I+D team]**
-- **Product Quality Management**: Our monitoring and analytic capabilities enable you to swiftly identify praise and criticism of your products. You can detect quality issues early on, make the necessary adjustments, and ensure that every product meets the highest standards of excellence. **[Quality Management and Product Design team]**
-- **Customer Service Enhancement**: Through the thorough analysis of customer reviews, we provide you with invaluable information about customer expectations and frustrations. Our services empower you to tailor your customer support accordingly, resulting in happier customers and strengthened loyalty. **[Customer support team]**
-- **Marketing and Advertising Optimization**: Our solutions offer you a deep understanding of what your customers truly value. Armed with this knowledge, you can design marketing and advertising strategies that are more efficient and targeted, maximizing your ROI and customer engagement. **[Marketing team]**
-- **Prevention of Human Errors and Fraud**: Our state-of-the-art monitoring and analysis of customer reviews allow you to detect suspicious or unusual behaviors that may indicate fraud or manipulation in ratings. With insights directly from consumers on our dashboard, you gain a comprehensive overview that helps in taking preventive actions and ensures the integrity of your brand and products. **[Quality Management team]**
+Dashboards
+----------
+
+Hosted on Databricks SQL.
+
+.. image:: assets/brand_reviewer_dashboard.png
+    :alt: Architecture
+    :align: center
+
+.. image:: assets/product_dashboard.png
+    :alt: Architecture
+    :align: center
+
+Gradio UI - Real-time interaction with database through natural language
+------------------------------------------------------------------------
+
+.. image:: assets/gradio_ui.png
+    :alt: Architecture
+    :align: center
+
+* **Sentiment Analysis**: By processing customer opinions and comments, our cutting-edge technology allows you to pinpoint the overall sentiment towards specific products or your brand as a whole. This powerful insight can guide you in identifying key areas for improvement, enhancing your brand's reputation and customer satisfaction. You can see this in the *“Product Dashboard”* in the “Context over Sentiment and Overall Review”. Helpful to **[Sales Manager and I+D team]**.
+
+* **Product Quality Management**: Our monitoring and analytic capabilities enable you to swiftly identify praise and criticism of your products. You can detect quality issues early on, make the necessary adjustments, and ensure that every product meets the highest standards of excellence. You can see this in the *“Product Dashboard”* in the “Context over Sentiment and Overall Review” and “Insight to improve the product”. Helpful to **[Quality Management and Product Design team]**.
+
+* **Customer Service Enhancement**: Through the thorough analysis of customer reviews, we provide you with invaluable information about customer expectations and frustrations. Our services empower you to tailor your customer support accordingly, resulting in happier customers and strengthened loyalty. You can see this in the “Product Dashboard” in the “Automatic response generated using LLM”. Helpful to: **[Customer support team]**.
+
+* **Marketing and Advertising Optimization**: Our solutions offer you a deep understanding of what your customers truly value. Armed with this knowledge, you can design marketing and advertising strategies that are more efficient and targeted, maximizing your ROI and customer engagement. You can see this in the *“Product Dashboard”* in the “Context over Sentiment and Overall Review” and “Insight to improve the product”. Helpful to **[Marketing team]**.
+
+* **Prevention of Human Errors and Fraud**: Our state-of-the-art monitoring and analysis of customer reviews allow you to detect suspicious or unusual behaviors that may indicate fraud or manipulation in ratings. With insights directly from consumers on our dashboard, you gain a comprehensive overview that helps in taking preventive actions and ensures the integrity of your brand and products. You can see this in the “Brand-Reviewer Dashboard” in the “Context over reviewers and brand average”. Helpful for: **[Quality Management team]**.
 
 Technical Stack
 ---------------
