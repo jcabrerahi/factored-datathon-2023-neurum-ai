@@ -78,9 +78,9 @@ enqueued_time = max_values["enqueuedTime"]
 
 aws_config = AWSConfig(aws_access_key_id=aws_access_key, aws_secret_key=aws_secret_key)
 boto3_config = aws_config.create_boto3_session()
+table_name = 'stream_events_position'
 dynamo_instance = DynamoDBStore(boto3_config, table_name)
 
-table_name = 'stream_events_position'
 item_key = {"event_source": "factored_azure_eventhub"}
 
 # Define parameters to update
@@ -94,4 +94,4 @@ update_expression = {
 }
 
 # Update dynamoDB table with new values
-response = dynamo_instance.update_item(table_name, item_key, update_expression)
+response = dynamo_instance.update_item(item_key, update_expression)

@@ -23,15 +23,13 @@ class AbstractStore(ABC):
         """
 
     @abstractmethod
-    def update_item(self, key, update_expression, expression_attribute_values):
+    def update_item(self, key, update_expression):
         """ Updates an item.
 
         Args:
             key (dict): The key of the item to update.
             update_expression (str): A string representation of the update to
             apply.
-            expression_attribute_values (dict): A dictionary of expression
-            attribute values.
         """
 
     @abstractmethod
