@@ -187,7 +187,3 @@ display(df_gold_llm)
 # COMMAND ----------
 
 df_gold_llm.write.format("delta").mode("overwrite").saveAsTable("factored.amazon.gold_llm_review")
-
-# COMMAND ----------
-
-
