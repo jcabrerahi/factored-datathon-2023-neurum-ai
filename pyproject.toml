@@ -22,6 +22,7 @@ delta-spark = "^2.4.0"
 black = "^23.7.0"
 flake8 = "^6.1.0"
 pylint = "^2.17.5"
+pytest-local-badge = "^1.0.3"
 
 [build-system]
 requires = ["poetry-core"]
