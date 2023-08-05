@@ -909,6 +909,24 @@ files = [
 Werkzeug = ">=2.0.0"
 
 [[package]]
+name = "pytest-local-badge"
+version = "1.0.3"
+description = "Generate local badges (shields) reporting your test suite status."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "pytest-local-badge-1.0.3.tar.gz", hash = "sha256:e13274cc9cadf91a1e3fa290d0bbbd371a365f9d719411e475596f722c2725a5"},
+    {file = "pytest_local_badge-1.0.3-py3-none-any.whl", hash = "sha256:e14dc79922598e5b27ef4398a3537535ad115df2229ebba0259f6c6d92c6047b"},
+]
+
+[package.dependencies]
+pytest = ">=6.1.0"
+
+[package.extras]
+develop = ["black (>=22.12.0)", "build", "flake8-bugbear", "flake8-comprehensions", "flake8-import-order", "flake8-print", "pep8-naming", "pytest (>=7.1.0,<8)", "pytest-cov", "pytest-mock"]
+
+[[package]]
 name = "python-dateutil"
 version = "2.8.2"
 description = "Extensions to the standard Python datetime module"
@@ -1250,4 +1268,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "32a6ce916482b9178137b2094b910836fdb48437b165b150d60199d0713b0cb2"
+content-hash = "31486c374f7c521233a9f344a14e00c2090dbeabbb85344c62f6de623f4d941e"
